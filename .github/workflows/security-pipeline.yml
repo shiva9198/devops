@@ -21,13 +21,12 @@ jobs:
         with:
           fetch-depth: 0 
 
-      # ----- GITLEAKS (SECRET SCANNING) -----
+# ----- GITLEAKS (SECRET SCANNING) -----
       # Step 2: Run Gitleaks to find any hard-coded secrets
       - name: Run Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           # This configures Gitleaks to fail the build if secrets are found
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # No license needed for open-source
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
       # ----- TRIVY (VULNERABILITY SCANNING) -----
