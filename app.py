@@ -1,4 +1,7 @@
 # app.py
+# THIS IS A FAKE SECRET THAT MATCHES THE GITLEAKS RULE
+SUPER_SECRET_API_KEY = "sk_live_1234567890abcdefghijklmn"
+
 from flask import Flask
 import os
 
