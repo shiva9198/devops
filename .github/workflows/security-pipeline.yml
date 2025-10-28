@@ -1,0 +1,62 @@
+# .github/workflows/security-pipeline.yml
+name: 'GitSecOps: Self-Defending Pipeline'
+
+# This workflow runs on every push to any branch
+on:
+  push:
+    branches: [ "**" ] # Runs on all branches
+  pull_request:
+    branches: [ "main" ] # Also runs on PRs to main
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        # We must fetch all history for Gitleaks to scan effectively
+        with:
+          fetch-depth: 0 
+
+      # ----- GITLEAKS (SECRET SCANNING) -----
+      # Step 2: Run Gitleaks to find any hard-coded secrets
+      - name: Run Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          # This configures Gitleaks to fail the build if secrets are found
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # No license needed for open-source
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      # ----- TRIVY (VULNERABILITY SCANNING) -----
+      # Step 3: Build the Docker image (so Trivy can scan it)
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          # We just build it locally and tag it
+          tags: gitsecops-demo:latest
+          # 'load: true' makes the image available to subsequent steps
+          load: true 
+
+      # Step 4: Run Trivy to scan the image for vulnerabilities
+      - name: Run Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gitsecops-demo:latest' # The tag we just built
+          format: 'table' # How to display the results in the log
+          
+          # This is the "gate"
+          # Fail the build if Trivy finds any CRITICAL or HIGH severity vulnerabilities
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          
+          # Only report vulnerabilities that have a known fix
+          ignore-unfixed: true
+
+      # If we get here, all scans passed!
+      - name: Scans Passed
+        run: echo "✅ All security scans passed!"
